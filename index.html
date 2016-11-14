@@ -202,7 +202,27 @@
             request.onsuccess = cetakPesanHandler('Mahasiswa [' + mahasiswa.nim + '] telah ditambahkan ke database lokal.');            
         }
         
-      
+      // Menampilkan dari database
+        function bacaDariDatabase() {
+            var objectstore = buatTransaksi().objectStore('mahasiswa');
+            objectstore.openCursor().onsuccess = function(e) {
+                var result = e.target.result;
+                if (result) {
+                    pesan.innerHTML += 'Membaca mahasiswa [' + result.value.nim + '] dari database.<br>';
+                    var baris = tabel.insertRow();                  
+                    baris.id = result.value.nim;
+                    baris.insertCell().appendChild(document.createTextNode(result.value.nim));
+                    baris.insertCell().appendChild(document.createTextNode(result.value.nama));
+                    baris.insertCell().appendChild(document.createTextNode(result.value.semester));
+                    var btnHapus = document.createElement('input');
+                    btnHapus.type = 'button';
+                    btnHapus.value = 'Hapus';
+                    btnHapus.id = result.value.nim;         
+                    baris.insertCell().appendChild(btnHapus);
+                    result.continue();
+                }
+            }   
+        }
         // Hapus dari database
         function hapusDariDatabase(nim) {
             var objectstore = buatTransaksi().objectStore('mahasiswa');
