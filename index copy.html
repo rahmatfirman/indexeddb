@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'/>
+    <title>Latihan IndexedDb</title>
+    <style type='text/css'>     
+        #pesan {
+            border: 1px dashed #eee; padding: 10px;
+            color: #808080; font-family: monospace;
+        }
+    </style>
+    <link rel="stylesheet" href="css/materialize.css">
+    <script src="js/jquery-1.11.2.min.js"></script>
+    <script src="js/materialize.js"></script>
+    
+</head>
+<body>
+  <nav>
+    <div class="nav-wrapper">
+      <a href="#" class="brand-logo center">Contoh Penggunaan IndexedDB</a>
+      <ul id="nav-mobile" class="left hide-on-med-and-down">
+      </ul>
+    </div>
+  </nav>
+  <div class="container">
+   <div id="basic-form" class="section">
+            <div class="row">
+              <div class="col s12 m12 l5">
+                <div class="card-panel">
+                  <h5 class="header2" align="center">Form Input Mahasiswa</h5>
+                  <div class="row">
+                    <form class="col s12" id='frmUtama'>
+                      <div class="row">
+                        <div class="input-field col s12">
+                          <i class="mdi-action-picture-in-picture prefix"></i>
+                          <input id="nim" name="nim" type="text" maxlength="9" required>
+                          <label for="nim">NIM</label>
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="input-field col s12">
+                          <i class="mdi-action-account-box prefix"></i>
+                          <input id="nama" name="nama" type="text" maxlength="50" required>
+                          <label for="nama">Nama</label>
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="input-field col s12">
+                          <i class="mdi-social-school prefix"></i>
+                          <input id="semester" name="semester" type="number" min="1" max="10" step="1" required>
+                          <label for="semester">Semester</label>
+                        </div>                      
+                        <div class="row">
+                          <div class="input-field col s12">
+                              <button class="btn cyan waves-effect waves-light right" id='btnTambah'type="submit" value="Tambah">Tambah</button>
+                          </div>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+              <div class="col s12 m12 l7">
+                  <div class="card-panel">
+                  <table class="hoverable">
+                        <thead>
+                            <tr>
+                                <th>NIM</th>
+                                <th>Nama</th>                        
+                                <th>Semester</th>
+                                <th> </th>
+                            </tr>         
+                        </thead>
+                        <tbody id="tabel">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+       </div>
+       <div id='pesan'> </div>
+      </div>
+    </div>
+    <script type="text/javascript">
+//prefixes of implementation that we want to test
+
+        var tabel = document.getElementById('tabel'),
+            nim = document.getElementById('nim'),
+            nama = document.getElementById('nama'),
+            semester = document.getElementById ('semester'),
+            btnTambah = document.getElementById('btnTambah'),
+            form = document.getElementById('frmUtama'),
+            pesan = document.getElementById('pesan'),
+            db; 
+
+         window.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+         
+         //prefixes of window.IDB objects
+         window.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction;
+         window.IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange
+         
+         if (!window.indexedDB) {
+            window.alert("Your browser doesn't support a stable version of IndexedDB.")
+         }
+
+
+          const mahasiswaData = [
+            { nim: "D42114012", nama: "Andi", semester:5 },
+            { nim: "D42114013", nama: "Budi", semester:5 },
+            { nim: "D42114123", nama: "Rudi", semester:5 },
+         ];
+         var db;
+         var request = window.indexedDB.open("mahasiswadb", 1);
+
+         request.onerror = function(event) {
+            console.log("error: ");
+         };
+         
+         request.onsuccess = function(event) {
+            db = request.result;
+            console.log("success: "+ db);
+            bacaDariDatabase();
+         };
+         
+         request.onupgradeneeded = function(event) {
+            var db = event.target.result;
+            var objectStore = db.createObjectStore("mahasiswa", {keyPath: "nim"});
+            
+            for (var i in mahasiswaData) {
+               objectStore.add(mahasiswaData[i]);
+            }
+         }
+               
+
+
+        function tambahBaris(e) {
+            // Periksa apakah NIM sudah ada
+            if (tabel.rows.namedItem(nim.value)) {
+                pesan.textContent = 'Error: Nim sudah terdaftar!';
+                e.preventDefault();
+                return;
+            }
+            // Tambah ke database
+            tambahKeDatabase({
+
+                nim: nim.value,
+                nama: nama.value,
+                semester: semester.value,
+            });
+ 
+            // Membuat baris baru
+            var baris = tabel.insertRow();
+            baris.id = nim.value;
+            baris.insertCell().appendChild(document.createTextNode(nim.value));
+            baris.insertCell().appendChild(document.createTextNode(nama.value));
+            baris.insertCell().appendChild(document.createTextNode(semester.value));
+ 
+            // Membuat tombol hapus untuk setiap baris
+            var btnHapus = document.createElement('input');
+            btnHapus.type = 'button';
+            btnHapus.value = 'Hapus';
+            btnHapus.id = nim.value;            
+            baris.insertCell().appendChild(btnHapus);
+ 
+            e.preventDefault();
+        }               
+ 
+        function hapusBaris(e) {
+            if (e.target.type=='button') {                
+                tabel.deleteRow(tabel.rows.namedItem(e.target.id).sectionRowIndex);
+                hapusDariDatabase(e.target.id);
+            }
+        }
+ 
+        form.addEventListener('submit', tambahBaris, false);                  
+        tabel.addEventListener('click', hapusBaris, true);            
+        function kesalahanHandler(e) {
+        pesan.innerHTML += 'Kesalahan Database: ' + e.target.errorCode + '<br>';      
+        }
+    
+      
+
+   
+        
+        function cetakPesanHandler(msg) {
+            return function(e) {
+                pesan.innerHTML += msg + '<br>';
+            }
+        }
+ 
+        function buatTransaksi() {
+            var transaction = db.transaction(['mahasiswa'], 'readwrite');
+
+            transaction.onerror = kesalahanHandler;
+            transaction.oncomplete = cetakPesanHandler('Transaksi baru saja diselesaikan.');                  
+            return transaction;
+        }
+
+        function tambahKeDatabase(mahasiswa) {      
+            var objectstore = buatTransaksi().objectStore('mahasiswa');
+            var request = objectstore.add(mahasiswa);
+            request.onerror = kesalahanHandler;
+            request.onsuccess = cetakPesanHandler('Mahasiswa [' + mahasiswa.nim + '] telah ditambahkan ke database lokal.');            
+        }
+        
+      // Menampilkan dari database
+        function bacaDariDatabase() {
+            var objectstore = buatTransaksi().objectStore('mahasiswa');
+            objectstore.openCursor().onsuccess = function(e) {
+                var result = e.target.result;
+                if (result) {
+                    pesan.innerHTML += 'Membaca mahasiswa [' + result.value.nim + '] dari database.<br>';
+                    var baris = tabel.insertRow();                  
+                    baris.id = result.value.nim;
+                    baris.insertCell().appendChild(document.createTextNode(result.value.nim));
+                    baris.insertCell().appendChild(document.createTextNode(result.value.nama));
+                    baris.insertCell().appendChild(document.createTextNode(result.value.semester));
+                    var btnHapus = document.createElement('input');
+                    btnHapus.type = 'button';
+                    btnHapus.value = 'Hapus';
+                    btnHapus.id = result.value.nim;         
+                    baris.insertCell().appendChild(btnHapus);
+                    result.continue();
+                }
+            }   
+        }
+        // Hapus dari database
+        function hapusDariDatabase(nim) {
+            var objectstore = buatTransaksi().objectStore('mahasiswa');
+            var request = objectstore.delete(nim);
+            request.onerror = kesalahanHandler;
+            request.onsuccess = cetakPesanHandler('Mahasiswa [' + nim + '] berhasil dihapus dari database lokal.');
+        }
+    </script>
+ 
+</body>
+</html>
